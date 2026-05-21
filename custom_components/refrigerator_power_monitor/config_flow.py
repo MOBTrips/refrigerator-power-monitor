@@ -4,6 +4,7 @@ from __future__ import annotations
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.const import CONF_NAME
 from homeassistant.helpers import selector
 
@@ -115,32 +116,29 @@ class RefrigeratorPowerMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAI
         return self.async_show_form(step_id="user", data_schema=STEP_USER_DATA_SCHEMA)
 
     @staticmethod
+    @callback
     def async_get_options_flow(config_entry):
-        return RefrigeratorPowerMonitorOptionsFlow(config_entry)
+        """Create the options flow.
+
+        Do not pass config_entry into the options flow. In current Home Assistant
+        versions, OptionsFlow exposes it as the read-only self.config_entry
+        property. Passing it and assigning self.config_entry causes the gear/settings
+        page to fail with a 500 error.
+        """
+        return RefrigeratorPowerMonitorOptionsFlow()
 
 class RefrigeratorPowerMonitorOptionsFlow(config_entries.OptionsFlow):
     """Handle options."""
 
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input=None):
+        """Manage integration options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current = {**self.config_entry.options}
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_SHORT_AVG_MIN, default=current.get(CONF_SHORT_AVG_MIN, DEFAULT_SHORT_AVG_MIN)): selector.NumberSelector(selector.NumberSelectorConfig(min=5, max=240, step=5, unit_of_measurement="min")),
-                vol.Required(CONF_BASELINE_AVG_HOURS, default=current.get(CONF_BASELINE_AVG_HOURS, DEFAULT_BASELINE_AVG_HOURS)): selector.NumberSelector(selector.NumberSelectorConfig(min=2, max=168, step=1, unit_of_measurement="hr")),
-                vol.Required(CONF_DUTY_RECENT_HOURS, default=current.get(CONF_DUTY_RECENT_HOURS, DEFAULT_DUTY_RECENT_HOURS)): selector.NumberSelector(selector.NumberSelectorConfig(min=1, max=12, step=1, unit_of_measurement="hr")),
-                vol.Required(CONF_DUTY_BASELINE_HOURS, default=current.get(CONF_DUTY_BASELINE_HOURS, DEFAULT_DUTY_BASELINE_HOURS)): selector.NumberSelector(selector.NumberSelectorConfig(min=2, max=168, step=1, unit_of_measurement="hr")),
-                vol.Required(CONF_HIGH_DUTY_CYCLE, default=current.get(CONF_HIGH_DUTY_CYCLE, DEFAULT_HIGH_DUTY_CYCLE)): selector.NumberSelector(selector.NumberSelectorConfig(min=40, max=100, step=1, unit_of_measurement="%")),
-                vol.Required(CONF_DUTY_RATIO, default=current.get(CONF_DUTY_RATIO, DEFAULT_DUTY_RATIO)): selector.NumberSelector(selector.NumberSelectorConfig(min=1.0, max=5.0, step=0.1)),
-                vol.Required(CONF_AVG_POWER_MIN_W, default=current.get(CONF_AVG_POWER_MIN_W, DEFAULT_AVG_POWER_MIN_W)): selector.NumberSelector(selector.NumberSelectorConfig(min=1, max=1000, step=1, unit_of_measurement="W")),
-                vol.Required(CONF_POWER_RATIO, default=current.get(CONF_POWER_RATIO, DEFAULT_POWER_RATIO)): selector.NumberSelector(selector.NumberSelectorConfig(min=1.0, max=5.0, step=0.1)),
-                vol.Required(CONF_CONTINUOUS_RUN_MIN, default=current.get(CONF_CONTINUOUS_RUN_MIN, DEFAULT_CONTINUOUS_RUN_MIN)): selector.NumberSelector(selector.NumberSelectorConfig(min=15, max=720, step=5, unit_of_measurement="min")),
-                vol.Required(CONF_SAMPLE_INTERVAL_SEC, default=current.get(CONF_SAMPLE_INTERVAL_SEC, DEFAULT_SAMPLE_INTERVAL_SEC)): selector.NumberSelector(selector.NumberSelectorConfig(min=15, max=600, step=15, unit_of_measurement="sec")),
-            }
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                OPTIONS_SCHEMA,
+                self.config_entry.options,
+            ),
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
