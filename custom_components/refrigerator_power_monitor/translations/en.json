@@ -1,0 +1,60 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Refrigerator Power Monitor",
+        "description": "Create a virtual refrigerator/freezer monitoring device from an existing power sensor.",
+        "data": {
+          "name": "Device name",
+          "power_sensor": "Power sensor",
+          "compressor_min_w": "Compressor minimum watts",
+          "defrost_max_w": "Defrost / high-load exclusion watts"
+        },
+        "data_description": {
+          "compressor_min_w": "Power above this level is considered compressor operation.",
+          "defrost_max_w": "Power above this level is ignored for compressor duty-cycle detection, which helps exclude defrost heaters."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This power sensor is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Refrigerator Power Monitor options",
+        "description": "Tune anomaly detection thresholds and rolling history windows.",
+        "data": {
+          "short_avg_minutes": "Recent power average window",
+          "baseline_avg_hours": "Power baseline window",
+          "duty_recent_hours": "Recent duty-cycle window",
+          "duty_baseline_hours": "Duty-cycle baseline window",
+          "high_duty_cycle_threshold": "High duty-cycle threshold",
+          "duty_cycle_ratio_threshold": "Duty-cycle ratio threshold",
+          "average_power_minimum_w": "Minimum recent average power",
+          "power_ratio_threshold": "Power ratio threshold",
+          "continuous_run_minutes": "Continuous run threshold",
+          "sample_interval_seconds": "Sample interval"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_power": {"name": "Current power"},
+      "power_recent_average": {"name": "Recent average power"},
+      "power_baseline_average": {"name": "Baseline average power"},
+      "power_ratio": {"name": "Power ratio"},
+      "duty_cycle_recent": {"name": "Recent duty cycle"},
+      "duty_cycle_baseline": {"name": "Baseline duty cycle"},
+      "continuous_run": {"name": "Continuous run"},
+      "monitor_status": {"name": "Monitor status"}
+    },
+    "binary_sensor": {
+      "compressor_running": {"name": "Compressor running"},
+      "power_anomaly": {"name": "Power anomaly"},
+      "continuous_run_anomaly": {"name": "Continuous run anomaly"}
+    }
+  }
+}

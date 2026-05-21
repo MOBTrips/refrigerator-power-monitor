@@ -1,0 +1,12 @@
+{
+  "domain": "refrigerator_power_monitor",
+  "name": "Refrigerator Power Monitor",
+  "after_dependencies": ["recorder"],
+  "codeowners": ["@your-github-username"],
+  "config_flow": true,
+  "documentation": "https://github.com/your-github-username/refrigerator-power-monitor",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/your-github-username/refrigerator-power-monitor/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
