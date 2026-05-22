@@ -4,8 +4,8 @@ from __future__ import annotations
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import callback
 from homeassistant.const import CONF_NAME
+from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
@@ -13,27 +13,39 @@ from .const import (
     CONF_BASELINE_AVG_HOURS,
     CONF_COMPRESSOR_MIN_W,
     CONF_CONTINUOUS_RUN_MIN,
+    CONF_DEFROST_MAX_DURATION_MIN,
     CONF_DEFROST_MAX_W,
+    CONF_DEFROST_MIN_DURATION_MIN,
     CONF_DUTY_BASELINE_HOURS,
     CONF_DUTY_RATIO,
     CONF_DUTY_RECENT_HOURS,
     CONF_HIGH_DUTY_CYCLE,
+    CONF_IDLE_RECENT_HOURS,
+    CONF_NO_IDLE_MINUTES,
     CONF_POWER_RATIO,
     CONF_POWER_SENSOR,
     CONF_SAMPLE_INTERVAL_SEC,
     CONF_SHORT_AVG_MIN,
+    CONF_SHORT_SPIKE_MAX_DURATION_MIN,
+    CONF_TREND_THRESHOLD_PERCENT,
     DEFAULT_AVG_POWER_MIN_W,
     DEFAULT_BASELINE_AVG_HOURS,
     DEFAULT_COMPRESSOR_MIN_W,
     DEFAULT_CONTINUOUS_RUN_MIN,
+    DEFAULT_DEFROST_MAX_DURATION_MIN,
     DEFAULT_DEFROST_MAX_W,
+    DEFAULT_DEFROST_MIN_DURATION_MIN,
     DEFAULT_DUTY_BASELINE_HOURS,
     DEFAULT_DUTY_RATIO,
     DEFAULT_DUTY_RECENT_HOURS,
     DEFAULT_HIGH_DUTY_CYCLE,
+    DEFAULT_IDLE_RECENT_HOURS,
+    DEFAULT_NO_IDLE_MINUTES,
     DEFAULT_POWER_RATIO,
     DEFAULT_SAMPLE_INTERVAL_SEC,
     DEFAULT_SHORT_AVG_MIN,
+    DEFAULT_SHORT_SPIKE_MAX_DURATION_MIN,
+    DEFAULT_TREND_THRESHOLD_PERCENT,
     DOMAIN,
 )
 
@@ -54,6 +66,12 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 OPTIONS_SCHEMA = vol.Schema(
     {
+        vol.Required(CONF_COMPRESSOR_MIN_W, default=DEFAULT_COMPRESSOR_MIN_W): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=1, max=1000, step=1, unit_of_measurement="W")
+        ),
+        vol.Required(CONF_DEFROST_MAX_W, default=DEFAULT_DEFROST_MAX_W): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=10, max=2500, step=5, unit_of_measurement="W")
+        ),
         vol.Required(CONF_SHORT_AVG_MIN, default=DEFAULT_SHORT_AVG_MIN): selector.NumberSelector(
             selector.NumberSelectorConfig(min=5, max=240, step=5, unit_of_measurement="min")
         ),
@@ -81,11 +99,30 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required(CONF_CONTINUOUS_RUN_MIN, default=DEFAULT_CONTINUOUS_RUN_MIN): selector.NumberSelector(
             selector.NumberSelectorConfig(min=15, max=720, step=5, unit_of_measurement="min")
         ),
+        vol.Required(CONF_DEFROST_MIN_DURATION_MIN, default=DEFAULT_DEFROST_MIN_DURATION_MIN): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=1, max=30, step=1, unit_of_measurement="min")
+        ),
+        vol.Required(CONF_DEFROST_MAX_DURATION_MIN, default=DEFAULT_DEFROST_MAX_DURATION_MIN): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=10, max=180, step=5, unit_of_measurement="min")
+        ),
+        vol.Required(CONF_SHORT_SPIKE_MAX_DURATION_MIN, default=DEFAULT_SHORT_SPIKE_MAX_DURATION_MIN): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=1, max=15, step=1, unit_of_measurement="min")
+        ),
+        vol.Required(CONF_IDLE_RECENT_HOURS, default=DEFAULT_IDLE_RECENT_HOURS): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=1, max=12, step=1, unit_of_measurement="hr")
+        ),
+        vol.Required(CONF_NO_IDLE_MINUTES, default=DEFAULT_NO_IDLE_MINUTES): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=15, max=360, step=5, unit_of_measurement="min")
+        ),
+        vol.Required(CONF_TREND_THRESHOLD_PERCENT, default=DEFAULT_TREND_THRESHOLD_PERCENT): selector.NumberSelector(
+            selector.NumberSelectorConfig(min=1, max=50, step=1, unit_of_measurement="%")
+        ),
         vol.Required(CONF_SAMPLE_INTERVAL_SEC, default=DEFAULT_SAMPLE_INTERVAL_SEC): selector.NumberSelector(
             selector.NumberSelectorConfig(min=15, max=600, step=15, unit_of_measurement="sec")
         ),
     }
 )
+
 
 class RefrigeratorPowerMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow."""
@@ -101,6 +138,8 @@ class RefrigeratorPowerMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 title=user_input[CONF_NAME],
                 data=user_input,
                 options={
+                    CONF_COMPRESSOR_MIN_W: user_input[CONF_COMPRESSOR_MIN_W],
+                    CONF_DEFROST_MAX_W: user_input[CONF_DEFROST_MAX_W],
                     CONF_SHORT_AVG_MIN: DEFAULT_SHORT_AVG_MIN,
                     CONF_BASELINE_AVG_HOURS: DEFAULT_BASELINE_AVG_HOURS,
                     CONF_DUTY_RECENT_HOURS: DEFAULT_DUTY_RECENT_HOURS,
@@ -110,6 +149,12 @@ class RefrigeratorPowerMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                     CONF_AVG_POWER_MIN_W: DEFAULT_AVG_POWER_MIN_W,
                     CONF_POWER_RATIO: DEFAULT_POWER_RATIO,
                     CONF_CONTINUOUS_RUN_MIN: DEFAULT_CONTINUOUS_RUN_MIN,
+                    CONF_DEFROST_MIN_DURATION_MIN: DEFAULT_DEFROST_MIN_DURATION_MIN,
+                    CONF_DEFROST_MAX_DURATION_MIN: DEFAULT_DEFROST_MAX_DURATION_MIN,
+                    CONF_SHORT_SPIKE_MAX_DURATION_MIN: DEFAULT_SHORT_SPIKE_MAX_DURATION_MIN,
+                    CONF_IDLE_RECENT_HOURS: DEFAULT_IDLE_RECENT_HOURS,
+                    CONF_NO_IDLE_MINUTES: DEFAULT_NO_IDLE_MINUTES,
+                    CONF_TREND_THRESHOLD_PERCENT: DEFAULT_TREND_THRESHOLD_PERCENT,
                     CONF_SAMPLE_INTERVAL_SEC: DEFAULT_SAMPLE_INTERVAL_SEC,
                 },
             )
@@ -118,14 +163,9 @@ class RefrigeratorPowerMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAI
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        """Create the options flow.
-
-        Do not pass config_entry into the options flow. In current Home Assistant
-        versions, OptionsFlow exposes it as the read-only self.config_entry
-        property. Passing it and assigning self.config_entry causes the gear/settings
-        page to fail with a 500 error.
-        """
+        """Create the options flow."""
         return RefrigeratorPowerMonitorOptionsFlow()
+
 
 class RefrigeratorPowerMonitorOptionsFlow(config_entries.OptionsFlow):
     """Handle options."""
@@ -135,10 +175,18 @@ class RefrigeratorPowerMonitorOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
+        suggested = {
+            CONF_COMPRESSOR_MIN_W: self.config_entry.options.get(
+                CONF_COMPRESSOR_MIN_W,
+                self.config_entry.data.get(CONF_COMPRESSOR_MIN_W, DEFAULT_COMPRESSOR_MIN_W),
+            ),
+            CONF_DEFROST_MAX_W: self.config_entry.options.get(
+                CONF_DEFROST_MAX_W,
+                self.config_entry.data.get(CONF_DEFROST_MAX_W, DEFAULT_DEFROST_MAX_W),
+            ),
+            **self.config_entry.options,
+        }
         return self.async_show_form(
             step_id="init",
-            data_schema=self.add_suggested_values_to_schema(
-                OPTIONS_SCHEMA,
-                self.config_entry.options,
-            ),
+            data_schema=self.add_suggested_values_to_schema(OPTIONS_SCHEMA, suggested),
         )

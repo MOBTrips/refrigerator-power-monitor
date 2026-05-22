@@ -1,6 +1,6 @@
 {
   "name": "Refrigerator Power Monitor",
   "render_readme": true,
-  "domains": ["binary_sensor", "sensor"],
+  "domains": ["binary_sensor", "sensor", "button"],
   "homeassistant": "2024.8.0"
 }

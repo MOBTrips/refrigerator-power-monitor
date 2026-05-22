@@ -8,11 +8,11 @@
           "name": "Device name",
           "power_sensor": "Power sensor",
           "compressor_min_w": "Compressor minimum watts",
-          "defrost_max_w": "Defrost / high-load exclusion watts"
+          "defrost_max_w": "High-power / defrost threshold watts"
         },
         "data_description": {
-          "compressor_min_w": "Power above this level is considered compressor operation.",
-          "defrost_max_w": "Power above this level is ignored for compressor duty-cycle detection, which helps exclude defrost heaters."
+          "compressor_min_w": "Power above this level and below the high-power threshold is considered compressor operation.",
+          "defrost_max_w": "Power above this level is treated as high-power behavior such as defrost, heater, ice maker, or accessory load."
         }
       }
     },
@@ -24,8 +24,10 @@
     "step": {
       "init": {
         "title": "Refrigerator Power Monitor options",
-        "description": "Tune anomaly detection thresholds and rolling history windows.",
+        "description": "Tune anomaly detection thresholds, event classification, and rolling history windows.",
         "data": {
+          "compressor_min_w": "Compressor minimum watts",
+          "defrost_max_w": "High-power / defrost threshold watts",
           "short_avg_minutes": "Recent power average window",
           "baseline_avg_hours": "Power baseline window",
           "duty_recent_hours": "Recent duty-cycle window",
@@ -35,7 +37,21 @@
           "average_power_minimum_w": "Minimum recent average power",
           "power_ratio_threshold": "Power ratio threshold",
           "continuous_run_minutes": "Continuous run threshold",
+          "defrost_min_duration_minutes": "Defrost minimum duration",
+          "defrost_max_duration_minutes": "Defrost maximum duration",
+          "short_spike_max_duration_minutes": "Short spike maximum duration",
+          "idle_recent_hours": "Idle recovery lookback window",
+          "no_idle_minutes": "No-idle recovery threshold",
+          "trend_threshold_percent": "Cooling trend threshold",
           "sample_interval_seconds": "Sample interval"
+        },
+        "data_description": {
+          "defrost_min_duration_minutes": "High-power events shorter than this are treated as short spikes, not defrost.",
+          "defrost_max_duration_minutes": "High-power events longer than this become unknown high-power events instead of normal defrost.",
+          "short_spike_max_duration_minutes": "Short high-power events may be ice maker, valve, accessory, or sensor noise.",
+          "idle_recent_hours": "How far back to calculate idle recovery time.",
+          "no_idle_minutes": "If the compressor is running and the refrigerator has not returned to idle this long, raise a stronger alert.",
+          "trend_threshold_percent": "Percent change needed to call recent cooling load increasing or decreasing."
         }
       }
     }
@@ -48,13 +64,31 @@
       "power_ratio": {"name": "Power ratio"},
       "duty_cycle_recent": {"name": "Recent duty cycle"},
       "duty_cycle_baseline": {"name": "Baseline duty cycle"},
+      "idle_time_recent": {"name": "Idle time recent"},
+      "time_since_idle": {"name": "Time since idle"},
       "continuous_run": {"name": "Continuous run"},
-      "monitor_status": {"name": "Monitor status"}
+      "defrost_count_24h": {"name": "Defrost count 24h"},
+      "short_spike_count_24h": {"name": "Short spike count 24h"},
+      "last_defrost_duration": {"name": "Last defrost duration"},
+      "anomaly_confidence": {"name": "Anomaly confidence"},
+      "suggested_compressor_min": {"name": "Suggested compressor minimum"},
+      "suggested_defrost_min": {"name": "Suggested defrost threshold"},
+      "suggested_average_power_minimum": {"name": "Suggested average power minimum"},
+      "monitor_status": {"name": "Monitor status"},
+      "last_event_type": {"name": "Last event type"},
+      "cooling_trend": {"name": "Cooling trend"},
+      "alert_level": {"name": "Alert level"},
+      "alert_reason": {"name": "Alert reason"}
     },
     "binary_sensor": {
       "compressor_running": {"name": "Compressor running"},
+      "defrost_active": {"name": "Defrost active"},
       "power_anomaly": {"name": "Power anomaly"},
-      "continuous_run_anomaly": {"name": "Continuous run anomaly"}
+      "continuous_run_anomaly": {"name": "Continuous run anomaly"},
+      "no_idle_recovery_anomaly": {"name": "No idle recovery anomaly"}
+    },
+    "button": {
+      "reset_baseline": {"name": "Reset baseline"}
     }
   }
 }

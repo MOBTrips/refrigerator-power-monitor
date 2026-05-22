@@ -1,10 +1,38 @@
 # Changelog
 
-## 0.1.0
+## v0.2.0
 
-- Initial HACS-ready custom integration.
-- Adds config flow and options flow.
-- Creates a virtual Home Assistant device per refrigerator/freezer.
-- Adds compressor-running, power-anomaly, and continuous-run anomaly binary sensors.
-- Adds rolling power average, duty-cycle, power-ratio, and monitor-status sensors.
-- Persists rolling samples using Home Assistant storage.
+### Added
+
+- Defrost active binary sensor.
+- No-idle recovery anomaly binary sensor.
+- Reset baseline button.
+- Last event type sensor.
+- Cooling trend sensor.
+- Alert level sensor.
+- Alert reason sensor.
+- Idle time recent sensor.
+- Time since idle sensor.
+- Defrost count 24h sensor.
+- Short spike count 24h sensor.
+- Last defrost duration sensor.
+- Anomaly confidence sensor.
+- Suggested threshold sensors.
+- More detailed diagnostic attributes.
+- Expanded README with tuning, troubleshooting, dashboard, and automation examples.
+
+### Changed
+
+- Improved event classification for compressor, idle, defrost, short spikes, and unknown high-power events.
+- Suppresses main anomaly alerts during defrost-like high-power events.
+- Adds heavy-use and recovering-from-load status classification.
+- Allows compressor and high-power thresholds to be changed from the options/gear page.
+- Updates HACS metadata to include the button platform.
+
+## v0.1.1
+
+- Fixed options flow gear/settings page compatibility.
+
+## v0.1.0
+
+- Initial release.
