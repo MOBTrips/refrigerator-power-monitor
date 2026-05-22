@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.1
+
+### Fixed
+- Fixed Home Assistant setup failure caused by internal storage version mismatch when upgrading from earlier releases.
+- Keeps stored rolling sample history compatible with v0.1.x installations.
+
+
 ## v0.2.0
 
 ### Added

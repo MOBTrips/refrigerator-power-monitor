@@ -352,3 +352,8 @@ README.md
 ## License
 
 MIT
+
+
+## v0.2.1 storage compatibility note
+
+Version 0.2.1 keeps the internal storage schema at version `1` so existing installations from v0.1.x can load their saved rolling samples without Home Assistant requesting a storage migration. If you saw `NotImplementedError` from `homeassistant.helpers.storage`, update to v0.2.1 or newer, redownload through HACS, and restart Home Assistant.
