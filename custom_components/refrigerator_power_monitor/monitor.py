@@ -19,6 +19,16 @@ from .const import (
     ALERT_LEVEL_NORMAL,
     ALERT_LEVEL_WARNING,
     ALERT_LEVEL_WATCH,
+    AUTO_TUNE_AUTO_APPLY,
+    AUTO_TUNE_OFF,
+    AUTO_TUNE_STATUS_APPLIED,
+    AUTO_TUNE_STATUS_AUTO_APPLIED,
+    AUTO_TUNE_STATUS_LEARNING,
+    AUTO_TUNE_STATUS_NO_SUGGESTIONS,
+    AUTO_TUNE_STATUS_OFF,
+    AUTO_TUNE_STATUS_SUGGESTIONS_READY,
+    AUTO_TUNE_SUGGEST_ONLY,
+    CONF_AUTO_TUNE_MODE,
     CONF_AVG_POWER_MIN_W,
     CONF_BASELINE_AVG_HOURS,
     CONF_COMPRESSOR_MIN_W,
@@ -35,9 +45,11 @@ from .const import (
     CONF_POWER_RATIO,
     CONF_POWER_SENSOR,
     CONF_SAMPLE_INTERVAL_SEC,
+    CONF_SENSITIVITY,
     CONF_SHORT_AVG_MIN,
     CONF_SHORT_SPIKE_MAX_DURATION_MIN,
     CONF_TREND_THRESHOLD_PERCENT,
+    DEFAULT_AUTO_TUNE_MODE,
     DEFAULT_AVG_POWER_MIN_W,
     DEFAULT_BASELINE_AVG_HOURS,
     DEFAULT_COMPRESSOR_MIN_W,
@@ -53,10 +65,14 @@ from .const import (
     DEFAULT_NO_IDLE_MINUTES,
     DEFAULT_POWER_RATIO,
     DEFAULT_SAMPLE_INTERVAL_SEC,
+    DEFAULT_SENSITIVITY,
     DEFAULT_SHORT_AVG_MIN,
     DEFAULT_SHORT_SPIKE_MAX_DURATION_MIN,
     DEFAULT_TREND_THRESHOLD_PERCENT,
     DOMAIN,
+    SENSITIVITY_HIGH,
+    SENSITIVITY_LOW,
+    SENSITIVITY_NORMAL,
     EVENT_COMPRESSOR,
     EVENT_DEFROST,
     EVENT_IDLE,
@@ -131,6 +147,12 @@ class MonitorMetrics:
     suggested_compressor_min_w: float | None = None
     suggested_defrost_min_w: float | None = None
     suggested_average_power_minimum_w: float | None = None
+    suggested_high_duty_cycle_threshold: float | None = None
+    suggested_power_ratio_threshold: float | None = None
+    suggested_duty_cycle_ratio_threshold: float | None = None
+    suggested_continuous_run_minutes: float | None = None
+    auto_tune_status: str = AUTO_TUNE_STATUS_OFF
+    last_auto_tune_applied: str | None = None
     reason: str = ""
 
 
@@ -198,6 +220,8 @@ class RefrigeratorPowerMonitor:
                 except (TypeError, ValueError):
                     self._last_defrost_started = None
             self._last_defrost_duration_minutes = stored.get("last_defrost_duration_minutes")
+            if stored.get("last_auto_tune_applied"):
+                self.metrics.last_auto_tune_applied = stored.get("last_auto_tune_applied")
         self._prune_samples()
         self._sample_now()
 
@@ -228,6 +252,35 @@ class RefrigeratorPowerMonitor:
         self._last_defrost_duration_minutes = None
         await self._async_save()
         self._sample_now()
+
+    async def async_analyze_baseline(self) -> None:
+        """Recalculate suggestions from the current rolling history."""
+        watts = self._current_power()
+        self._recalculate(watts, self._is_compressor_running(watts), False, self.metrics.last_event_type)
+        self._notify_listeners()
+
+    async def async_apply_suggested_thresholds(self, *, automatic: bool = False) -> bool:
+        """Apply currently suggested thresholds to config-entry options."""
+        suggestions = self._suggest_thresholds()
+        if not suggestions:
+            self.metrics.auto_tune_status = AUTO_TUNE_STATUS_NO_SUGGESTIONS
+            self._notify_listeners()
+            return False
+
+        new_options = dict(self.entry.options)
+        for key, value in suggestions.items():
+            if value is not None:
+                new_options[key] = value
+
+        # Keep user-selected mode/sensitivity unchanged.
+        self.hass.config_entries.async_update_entry(self.entry, options=new_options)
+        self.metrics.last_auto_tune_applied = dt_util.now().isoformat()
+        self.metrics.auto_tune_status = (
+            AUTO_TUNE_STATUS_AUTO_APPLIED if automatic else AUTO_TUNE_STATUS_APPLIED
+        )
+        await self._async_save()
+        self._sample_now()
+        return True
 
     def add_listener(self, update_callback: Callable[[], None]) -> Callable[[], None]:
         """Register an update callback."""
@@ -399,25 +452,74 @@ class RefrigeratorPowerMonitor:
             return "decreasing"
         return "stable"
 
-    def _suggest_thresholds(self) -> tuple[float | None, float | None, float | None]:
-        if len(self._samples) < 30:
-            return None, None, None
+    def _sensitivity_factor(self) -> float:
+        """Return multiplier based on user-selected sensitivity."""
+        sensitivity = self.option_value(CONF_SENSITIVITY, DEFAULT_SENSITIVITY)
+        if sensitivity == SENSITIVITY_HIGH:
+            return 0.85
+        if sensitivity == SENSITIVITY_LOW:
+            return 1.20
+        return 1.0
+
+    def _suggest_thresholds(self) -> dict[str, float] | None:
+        """Suggest safe threshold options from observed history.
+
+        The suggestions are intentionally conservative. They are useful for
+        reducing setup friction, but should not be treated as a perfect model
+        of every refrigerator, room temperature, or grocery-loading pattern.
+        """
+        if len(self._samples) < 60:
+            return None
+
         watts_sorted = sorted(sample.watts for sample in self._samples)
+        compressor_samples = [s.watts for s in self._samples if s.event_type == EVENT_COMPRESSOR]
+        duty_baseline = self.metrics.duty_cycle_baseline_pct
+        continuous_runs: list[float] = []
+        run_start: float | None = None
+        for sample in self._samples:
+            if sample.compressor_running and run_start is None:
+                run_start = sample.ts
+            elif not sample.compressor_running and run_start is not None:
+                continuous_runs.append((sample.ts - run_start) / 60)
+                run_start = None
+        if run_start is not None:
+            continuous_runs.append((dt_util.utcnow().timestamp() - run_start) / 60)
 
-        def percentile(p: float) -> float:
-            if not watts_sorted:
+        def percentile(values: list[float], p: float) -> float:
+            if not values:
                 return 0.0
-            idx = min(len(watts_sorted) - 1, max(0, int(round((len(watts_sorted) - 1) * p))))
-            return watts_sorted[idx]
+            values = sorted(values)
+            idx = min(len(values) - 1, max(0, int(round((len(values) - 1) * p))))
+            return values[idx]
 
-        p50 = percentile(0.50)
-        p75 = percentile(0.75)
-        p90 = percentile(0.90)
-        p97 = percentile(0.97)
-        suggested_compressor_min = round(max(10.0, p50 + ((p75 - p50) * 0.5)), 1)
+        p50 = percentile(watts_sorted, 0.50)
+        p75 = percentile(watts_sorted, 0.75)
+        p90 = percentile(watts_sorted, 0.90)
+        p97 = percentile(watts_sorted, 0.97)
+
+        compressor_p25 = percentile(compressor_samples, 0.25) if compressor_samples else p75
+        suggested_compressor_min = round(max(8.0, min(compressor_p25 * 0.65, p50 + ((p75 - p50) * 0.5))), 1)
         suggested_defrost_min = round(max(suggested_compressor_min + 50.0, p97 * 0.85), 1)
         suggested_avg_min = round(max(DEFAULT_AVG_POWER_MIN_W, p90), 1)
-        return suggested_compressor_min, suggested_defrost_min, suggested_avg_min
+
+        factor = self._sensitivity_factor()
+        observed_duty = duty_baseline if duty_baseline is not None else DEFAULT_HIGH_DUTY_CYCLE / 2
+        suggested_high_duty = round(min(95.0, max(55.0, (observed_duty + 30.0) * factor)), 1)
+        suggested_power_ratio = round(min(3.5, max(1.35, DEFAULT_POWER_RATIO * factor)), 2)
+        suggested_duty_ratio = round(min(3.5, max(1.25, DEFAULT_DUTY_RATIO * factor)), 2)
+
+        typical_long_run = percentile(continuous_runs, 0.95) if continuous_runs else DEFAULT_CONTINUOUS_RUN_MIN / 2
+        suggested_continuous_run = round(min(360.0, max(60.0, typical_long_run * 1.75 * factor)), 0)
+
+        return {
+            CONF_COMPRESSOR_MIN_W: suggested_compressor_min,
+            CONF_DEFROST_MAX_W: suggested_defrost_min,
+            CONF_AVG_POWER_MIN_W: suggested_avg_min,
+            CONF_HIGH_DUTY_CYCLE: suggested_high_duty,
+            CONF_POWER_RATIO: suggested_power_ratio,
+            CONF_DUTY_RATIO: suggested_duty_ratio,
+            CONF_CONTINUOUS_RUN_MIN: suggested_continuous_run,
+        }
 
     def _recalculate(self, watts: float | None, running: bool, defrost_active: bool, event_type: str) -> None:
         short_avg_seconds = float(self.option_value(CONF_SHORT_AVG_MIN, DEFAULT_SHORT_AVG_MIN)) * 60
@@ -549,7 +651,8 @@ class RefrigeratorPowerMonitor:
             alert_reason = REASON_NONE
             reason = "No anomaly detected."
 
-        suggested_comp, suggested_defrost, suggested_avg = self._suggest_thresholds()
+        suggestions = self._suggest_thresholds() or {}
+        auto_tune_status = self._auto_tune_status(baseline_ready, suggestions)
 
         self.metrics = MonitorMetrics(
             current_power_w=watts,
@@ -578,11 +681,43 @@ class RefrigeratorPowerMonitor:
             alert_level=alert_level,
             alert_reason=alert_reason,
             anomaly_confidence=confidence,
-            suggested_compressor_min_w=suggested_comp,
-            suggested_defrost_min_w=suggested_defrost,
-            suggested_average_power_minimum_w=suggested_avg,
+            suggested_compressor_min_w=suggestions.get(CONF_COMPRESSOR_MIN_W),
+            suggested_defrost_min_w=suggestions.get(CONF_DEFROST_MAX_W),
+            suggested_average_power_minimum_w=suggestions.get(CONF_AVG_POWER_MIN_W),
+            suggested_high_duty_cycle_threshold=suggestions.get(CONF_HIGH_DUTY_CYCLE),
+            suggested_power_ratio_threshold=suggestions.get(CONF_POWER_RATIO),
+            suggested_duty_cycle_ratio_threshold=suggestions.get(CONF_DUTY_RATIO),
+            suggested_continuous_run_minutes=suggestions.get(CONF_CONTINUOUS_RUN_MIN),
+            auto_tune_status=auto_tune_status,
+            last_auto_tune_applied=self.metrics.last_auto_tune_applied,
             reason=reason,
         )
+
+    def _auto_tune_status(self, baseline_ready: bool, suggestions: dict[str, float]) -> str:
+        """Return current auto-tune status and apply suggestions if allowed."""
+        mode = self.option_value(CONF_AUTO_TUNE_MODE, DEFAULT_AUTO_TUNE_MODE)
+        if mode == AUTO_TUNE_OFF:
+            return AUTO_TUNE_STATUS_OFF
+        if not baseline_ready:
+            return AUTO_TUNE_STATUS_LEARNING
+        if not suggestions:
+            return AUTO_TUNE_STATUS_NO_SUGGESTIONS
+        if mode == AUTO_TUNE_AUTO_APPLY:
+            # Avoid changing options on every sample. Apply only when at least six
+            # hours have passed or this is the first auto-apply. The actual update
+            # is scheduled asynchronously so calculation remains synchronous.
+            last = self.metrics.last_auto_tune_applied
+            should_apply = last is None
+            if last is not None:
+                try:
+                    last_dt = dt_util.parse_datetime(last)
+                    should_apply = last_dt is None or (dt_util.now() - last_dt).total_seconds() > 6 * 3600
+                except (TypeError, ValueError):
+                    should_apply = True
+            if should_apply:
+                self.hass.async_create_task(self.async_apply_suggested_thresholds(automatic=True))
+                return AUTO_TUNE_STATUS_AUTO_APPLIED
+        return AUTO_TUNE_STATUS_SUGGESTIONS_READY
 
     async def _async_save(self) -> None:
         data = {
@@ -597,6 +732,7 @@ class RefrigeratorPowerMonitor:
             ],
             "last_defrost_started": self._last_defrost_started.isoformat() if self._last_defrost_started else None,
             "last_defrost_duration_minutes": self._last_defrost_duration_minutes,
+            "last_auto_tune_applied": self.metrics.last_auto_tune_applied,
         }
         await self._store.async_save(data)
 

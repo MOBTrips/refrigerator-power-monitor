@@ -2,237 +2,145 @@
 
 A Home Assistant custom integration that creates a virtual refrigerator/freezer monitoring device from an existing power sensor.
 
-It is designed for cases where you do not have a refrigerator/freezer door contact sensor, but you do have a power monitor on the refrigerator circuit or plug. The integration watches refrigerator power behavior and exposes anomaly entities that can be used to notify you when a refrigerator or lower freezer drawer is probably left open.
+It watches refrigerator power behavior to detect probable problems such as a freezer drawer left open, a door left open, continuous compressor runtime, unusually high duty cycle, no idle recovery, and abnormal power usage.
 
-> This is probable detection, not true door detection. A physical contact sensor is still the best way to know immediately that a door is open.
+> This is probable detection based on power behavior. It is not a replacement for a physical door contact sensor, but it can catch many real-world refrigerator/freezer problems when you already have a power monitor installed.
 
-## What is new in v0.2.0
+## Features
 
-This release adds richer event classification and more user-friendly diagnostics:
+- Creates one Home Assistant device per refrigerator/freezer monitor.
+- Uses an existing power sensor such as a smart plug, circuit monitor, or energy monitor.
+- Tracks rolling power history internally.
+- Classifies refrigerator behavior:
+  - Idle
+  - Compressor running
+  - Defrost-like high-power event
+  - Short spike / accessory event
+  - Unknown high-power event
+- Detects:
+  - Power anomaly
+  - Continuous run anomaly
+  - No idle recovery anomaly
+  - Defrost active
+- Exposes diagnostic sensors:
+  - Current power
+  - Recent average power
+  - Baseline average power
+  - Power ratio
+  - Recent duty cycle
+  - Baseline duty cycle
+  - Idle time recent
+  - Time since idle
+  - Continuous run time
+  - Alert level
+  - Alert reason
+  - Anomaly confidence
+  - Monitor status
+  - Last event type
+  - Cooling trend
+- Includes Auto-Tune Assistant:
+  - Suggested thresholds
+  - Analyze baseline button
+  - Apply suggested thresholds button
+  - Optional auto-apply mode
 
-- Defrost detection and suppression
-- Short high-power spike classification for ice maker/accessory-like events
-- Idle recovery tracking
-- No-idle recovery anomaly detection
-- Cooling trend detection
-- Warm-load / recovery classification
-- Heavy-use / frequent-opening classification
-- Alert level and alert reason sensors
-- Anomaly confidence score
-- Suggested threshold sensors
-- Reset baseline button
-- Expanded entity attributes and documentation
+## Installation with HACS
 
-## What it creates
-
-For each configured refrigerator/freezer, the integration creates one Home Assistant device.
-
-### Binary sensors
-
-- **Compressor running** — on when power is within the configured compressor-running range.
-- **Defrost active** — on when a high-power event looks like a defrost cycle.
-- **Power anomaly** — on when recent power and compressor duty cycle are both unusually high compared with baseline, or no idle recovery is detected.
-- **Continuous run anomaly** — on when the compressor appears to have run continuously longer than the configured threshold.
-- **No idle recovery anomaly** — on when the refrigerator has not returned to idle for too long while cooling.
-
-### Sensors
-
-- Current power
-- Recent average power
-- Baseline average power
-- Power ratio
-- Recent duty cycle
-- Baseline duty cycle
-- Idle time recent
-- Time since idle
-- Continuous run
-- Defrost count 24h
-- Short spike count 24h
-- Last defrost duration
-- Anomaly confidence
-- Suggested compressor minimum
-- Suggested defrost threshold
-- Suggested average power minimum
-- Monitor status
-- Last event type
-- Cooling trend
-- Alert level
-- Alert reason
-
-### Button
-
-- **Reset baseline** — clears stored rolling history and starts learning again.
-
-## How it works
-
-The integration subscribes to the selected power sensor and samples it on a configurable interval. It keeps a rolling local sample history and calculates:
-
-- Recent average power
-- Baseline average power
-- Recent compressor duty cycle
-- Baseline compressor duty cycle
-- Idle recovery time
-- Continuous compressor run time
-- Power ratio
-- Cooling trend
-- Defrost-like events
-- Short high-power spikes
-
-A power anomaly is detected when recent compressor duty cycle and average power are both unusually high versus baseline, or when the fridge has not returned to idle for too long.
-
-Defrost and short spike classification help avoid false positives from defrost heaters, ice makers, valves, and other accessory loads.
-
-## Event types
-
-The `Last event type` sensor may show:
-
-| Event type | Meaning |
-|---|---|
-| `idle` | Power is at or below the compressor minimum threshold |
-| `compressor` | Power is within the compressor-running band |
-| `defrost` | High-power event has lasted long enough to look like defrost |
-| `short_spike` | Brief high-power event, often accessory/ice-maker-like |
-| `unknown_high_power` | High-power event outside normal defrost timing |
-| `unavailable` | Power sensor is unavailable or non-numeric |
-
-## Monitor status
-
-The `Monitor status` sensor may show:
-
-| Status | Meaning |
-|---|---|
-| `learning_baseline` | Collecting enough samples to establish normal behavior |
-| `monitoring` | Baseline is ready and no anomaly is active |
-| `cooling` | Compressor is running normally |
-| `defrosting` | A high-power defrost-like event is active |
-| `recovering_from_load` | Cooling is high but trending down, often after warm groceries |
-| `heavy_use` | Duty cycle is high but idle recovery is still present |
-| `alert` | An anomaly is active |
-| `power_sensor_unavailable` | Source power sensor is unavailable or non-numeric |
-
-## Alert level
-
-The `Alert level` sensor may show:
-
-| Level | Meaning |
-|---|---|
-| `normal` | No concern |
-| `watch` | Interesting behavior, but likely explainable |
-| `warning` | Abnormal behavior worth checking |
-| `critical` | Stronger probability of a real issue |
-
-## Alert reason
-
-The `Alert reason` sensor may show:
-
-| Reason | Meaning |
-|---|---|
-| `none` | No issue |
-| `baseline_learning` | Still collecting baseline samples |
-| `power_sensor_unavailable` | Source power sensor is unavailable |
-| `defrost_active` | Defrost-like high-power event is active |
-| `short_power_spike` | Brief accessory-like spike detected |
-| `recovering_from_warm_load` | High load is trending down |
-| `heavy_use_or_frequent_openings` | High duty cycle but idle recovery exists |
-| `high_duty_cycle_and_power` | Main power anomaly logic triggered |
-| `continuous_compressor_runtime` | Compressor has run too long continuously |
-| `no_idle_recovery` | Refrigerator has not returned to idle for too long |
-
-## Installation through HACS as a custom repository
-
-1. Push this repository to GitHub.
-2. In Home Assistant, open HACS.
+1. In Home Assistant, open **HACS**.
+2. Go to **Integrations**.
 3. Open the three-dot menu.
 4. Choose **Custom repositories**.
-5. Add your GitHub repository URL.
+5. Add this repository URL:
+
+```text
+https://github.com/MOBTrips/refrigerator-power-monitor
+```
+
 6. Select category **Integration**.
 7. Install **Refrigerator Power Monitor**.
 8. Restart Home Assistant.
 
-## Manual installation
+## Add a refrigerator monitor
 
-Copy this folder:
-
-```text
-custom_components/refrigerator_power_monitor
-```
-
-into:
+Go to:
 
 ```text
-/homeassistant/custom_components/refrigerator_power_monitor
+Settings → Devices & services → Add integration → Refrigerator Power Monitor
 ```
 
-Then restart Home Assistant.
+Enter:
 
-## Add a refrigerator device
+- Device name, for example `Kitchen Refrigerator`
+- Power sensor, for example `sensor.refrigerator_power_2`
+- Initial compressor minimum watts
+- Initial high-power / defrost threshold watts
 
-After installation and restart:
+The integration creates a virtual device with multiple sensors and binary sensors.
 
-1. Go to **Settings → Devices & services**.
-2. Select **Add integration**.
-3. Search for **Refrigerator Power Monitor**.
-4. Enter:
-   - Device name, for example `Kitchen Refrigerator`
-   - Power sensor, for example `sensor.refrigerator_power_2`
-   - Compressor minimum watts, for example `60`
-   - High-power / defrost threshold watts, for example `300`
-5. Submit.
+## Auto-Tune Assistant
 
-A new virtual device will appear with the monitor entities.
+Version `0.3.0` adds an Auto-Tune Assistant to make setup easier.
 
-## Suggested starting thresholds
+### Auto-tune modes
 
-| Setting | Suggested start |
-|---|---:|
-| Compressor minimum watts | `60 W` |
-| High-power / defrost threshold watts | `300 W` |
-| Recent average window | `30 min` |
-| Power baseline window | `24 hr` |
-| Recent duty-cycle window | `2 hr` |
-| Duty-cycle baseline window | `24 hr` |
-| High duty-cycle threshold | `80%` |
-| Duty-cycle ratio threshold | `1.8x` |
-| Minimum recent average power | `75 W` |
-| Power ratio threshold | `2.0x` |
-| Continuous run threshold | `120 min` |
-| Defrost minimum duration | `3 min` |
-| Defrost maximum duration | `60 min` |
-| Short spike maximum duration | `3 min` |
-| Idle recovery lookback | `2 hr` |
-| No-idle recovery threshold | `90 min` |
-| Cooling trend threshold | `10%` |
-| Sample interval | `60 sec` |
+| Mode | Behavior |
+|---|---|
+| `off` | Does not suggest or apply threshold changes. |
+| `suggest_only` | Calculates suggested thresholds and exposes them as sensors. This is the recommended default. |
+| `auto_apply` | Periodically applies safe suggested thresholds after enough baseline data is available. |
 
-Tune these after watching your refrigerator for a few days.
+### Sensitivity
 
-## Example automation
+| Sensitivity | Behavior |
+|---|---|
+| `low` | Fewer alerts, more tolerant of heavy use. |
+| `normal` | Balanced default. |
+| `high` | More sensitive, may alert sooner. |
 
-```yaml
-alias: Kitchen Refrigerator - Possible Door Open
-mode: single
-trigger:
-  - platform: state
-    entity_id:
-      - binary_sensor.kitchen_refrigerator_power_anomaly
-      - binary_sensor.kitchen_refrigerator_continuous_run_anomaly
-      - binary_sensor.kitchen_refrigerator_no_idle_recovery_anomaly
-    to: "on"
-    for:
-      minutes: 5
-action:
-  - action: notify.mobile_app_your_phone
-    data:
-      title: "Check refrigerator/freezer"
-      message: >
-        The Kitchen Refrigerator is showing abnormal power behavior.
-        Status: {{ states('sensor.kitchen_refrigerator_monitor_status') }}.
-        Reason: {{ states('sensor.kitchen_refrigerator_alert_reason') }}.
-        Confidence: {{ states('sensor.kitchen_refrigerator_anomaly_confidence') }}%.
-        Check the freezer drawer, refrigerator doors, blocked vents, warm groceries, frost buildup, and condenser airflow.
-```
+### Auto-tune buttons
 
-## Example dashboard card
+| Button | Purpose |
+|---|---|
+| Reset baseline | Clears rolling history and starts learning again. |
+| Analyze baseline | Recalculates suggested thresholds from existing history. |
+| Apply suggested thresholds | Applies the currently suggested thresholds to the integration options. |
+
+Recommended workflow:
+
+1. Install the integration.
+2. Leave auto-tune mode on `suggest_only`.
+3. Let the refrigerator run normally for 24–72 hours.
+4. Review the suggested threshold sensors.
+5. Press **Apply suggested thresholds** if the suggestions look reasonable.
+6. Keep `auto_apply` disabled unless you are comfortable with the integration periodically updating thresholds.
+
+## Important entities
+
+### Binary sensors
+
+| Entity | Meaning |
+|---|---|
+| Compressor running | Power is in the configured compressor range. |
+| Defrost active | High-power event looks like a defrost cycle. |
+| Power anomaly | Combined abnormal power/duty-cycle behavior. |
+| Continuous run anomaly | Compressor has run continuously longer than the configured threshold. |
+| No idle recovery anomaly | Refrigerator has not returned to idle for too long. |
+
+### Diagnostic sensors
+
+| Sensor | Meaning |
+|---|---|
+| Monitor status | Current monitor state, such as learning, cooling, defrosting, heavy use, alert. |
+| Alert level | `normal`, `watch`, `warning`, or `critical`. |
+| Alert reason | Human-readable reason code for the current state. |
+| Anomaly confidence | 0–100 score based on multiple signals. |
+| Power ratio | Recent average power divided by baseline average power. |
+| Recent duty cycle | Percent of recent samples where compressor was running. |
+| Baseline duty cycle | Longer-term compressor runtime baseline. |
+| Idle time recent | Estimated idle time in the recent lookback window. |
+| Time since idle | How long since the monitor last saw idle behavior. |
+
+## Suggested dashboard card
 
 ```yaml
 type: entities
@@ -250,110 +158,93 @@ entities:
   - entity: sensor.kitchen_refrigerator_current_power
   - entity: sensor.kitchen_refrigerator_power_ratio
   - entity: sensor.kitchen_refrigerator_recent_duty_cycle
-  - entity: sensor.kitchen_refrigerator_time_since_idle
+  - entity: sensor.kitchen_refrigerator_baseline_duty_cycle
+  - entity: sensor.kitchen_refrigerator_auto_tune_status
+  - entity: button.kitchen_refrigerator_analyze_baseline
+  - entity: button.kitchen_refrigerator_apply_suggested_thresholds
   - entity: button.kitchen_refrigerator_reset_baseline
 ```
 
-Entity IDs depend on the device name and Home Assistant's entity registry.
+## Example notification automation
 
-## Troubleshooting checklist
-
-If you get an alert:
-
-1. Check the freezer drawer and refrigerator doors.
-2. Check if warm groceries were recently added.
-3. Check if the fridge has been opened frequently.
-4. Check if vents are blocked inside the refrigerator/freezer.
-5. Check for frost buildup.
-6. Check condenser coils and airflow.
-7. Check if the room temperature is unusually high.
-8. Review the source power graph for continuous running, defrost events, and short spikes.
-
-## Understanding common patterns
-
-| Situation | Likely pattern |
-|---|---|
-| Door left open | Continuous compressor, high duty cycle, little/no idle recovery |
-| Warm groceries | High duty cycle but cooling trend decreases over time |
-| Frequent door openings | Higher duty cycle but still returns to idle periodically |
-| Defrost | High wattage above compressor range for a limited duration |
-| Ice maker/accessory | Brief high-power spikes |
-| Dirty coils/failing fridge | Repeated high duty cycle across many days |
-
-## Resetting the baseline
-
-Use the **Reset baseline** button when:
-
-- You changed major thresholds
-- You moved the refrigerator
-- You replaced the refrigerator
-- You changed the power monitor
-- The stored baseline looks wrong
-
-After reset, `monitor_status` will return to `learning_baseline` until enough samples are collected.
-
-## Entity attributes for troubleshooting
-
-Most entities include diagnostic attributes such as:
-
-- `reason`
-- `status`
-- `alert_level`
-- `alert_reason`
-- `anomaly_confidence`
-- `source_power_sensor`
-- `sample_count`
-- `baseline_ready`
-- `current_power_w`
-- `power_recent_average_w`
-- `power_baseline_average_w`
-- `power_ratio`
-- `duty_cycle_recent_pct`
-- `duty_cycle_baseline_pct`
-- `idle_time_recent_minutes`
-- `time_since_idle_minutes`
-- `continuous_run_minutes`
-- `last_event_type`
-- `cooling_trend`
-- `defrost_count_24h`
-- `short_spike_count_24h`
-- `suggested_compressor_min_w`
-- `suggested_defrost_min_w`
-- `suggested_average_power_minimum_w`
-
-## Limitations
-
-- This does not replace a physical door sensor.
-- It cannot know for certain that warm groceries were added or that a door was opened frequently.
-- Defrost heaters, ice makers, room temperature, blocked vents, dirty coils, and failing components can affect power behavior.
-- Suggested thresholds are estimates from observed power data and should be reviewed by the user.
-- After a restart, sample history is restored from Home Assistant storage, but current continuous-run timing starts fresh.
-
-## Repository layout
-
-```text
-custom_components/
-  refrigerator_power_monitor/
-    __init__.py
-    binary_sensor.py
-    button.py
-    config_flow.py
-    const.py
-    entity.py
-    manifest.json
-    monitor.py
-    sensor.py
-    translations/
-      en.json
-hacs.json
-README.md
+```yaml
+alias: Kitchen Refrigerator - Power Anomaly Alert
+mode: single
+trigger:
+  - platform: state
+    entity_id:
+      - binary_sensor.kitchen_refrigerator_power_anomaly
+      - binary_sensor.kitchen_refrigerator_continuous_run_anomaly
+      - binary_sensor.kitchen_refrigerator_no_idle_recovery_anomaly
+    to: "on"
+    for:
+      minutes: 10
+action:
+  - action: notify.mobile_app_your_phone
+    data:
+      title: "Check refrigerator"
+      message: >
+        Kitchen Refrigerator may need attention.
+        Status: {{ states('sensor.kitchen_refrigerator_monitor_status') }}.
+        Alert level: {{ states('sensor.kitchen_refrigerator_alert_level') }}.
+        Reason: {{ states('sensor.kitchen_refrigerator_alert_reason') }}.
+        Confidence: {{ states('sensor.kitchen_refrigerator_anomaly_confidence') }}%.
 ```
 
-## License
+## Tuning guidance
 
-MIT
+Start with these approximate values for many standard refrigerators:
 
+| Setting | Starting point |
+|---|---:|
+| Compressor minimum watts | 60 W |
+| High-power / defrost threshold | 300 W |
+| High duty-cycle threshold | 80% |
+| Power ratio threshold | 2.0x |
+| Duty-cycle ratio threshold | 1.8x |
+| Continuous run threshold | 120 min |
+| No-idle threshold | 90 min |
 
-## v0.2.1 storage compatibility note
+Then let Auto-Tune Assistant make suggestions after several days of normal operation.
 
-Version 0.2.1 keeps the internal storage schema at version `1` so existing installations from v0.1.x can load their saved rolling samples without Home Assistant requesting a storage migration. If you saw `NotImplementedError` from `homeassistant.helpers.storage`, update to v0.2.1 or newer, redownload through HACS, and restart Home Assistant.
+## Interpreting common situations
+
+| Situation | Likely monitor behavior |
+|---|---|
+| Door/freezer drawer left open | Continuous run, high duty cycle, no idle recovery, high confidence. |
+| Warm groceries added | High duty cycle but cooling trend may decrease over time. |
+| Frequent door openings | Higher duty cycle but still some idle recovery. |
+| Defrost cycle | Defrost active, anomaly suppressed. |
+| Ice maker/accessory | Short spike count increases, usually no alert. |
+| Dirty coils/failing fridge | Repeated high duty cycle over many days. |
+
+## Troubleshooting
+
+If setup fails, check:
+
+```text
+Settings → System → Logs
+```
+
+If no entities update:
+
+- Confirm the selected power sensor exists.
+- Confirm the power sensor reports numeric watts.
+- Confirm Home Assistant was restarted after HACS installation/update.
+
+If alerts are too sensitive:
+
+- Set sensitivity to `low`.
+- Increase continuous run threshold.
+- Increase high duty-cycle threshold.
+- Increase power ratio threshold.
+
+If alerts are too slow:
+
+- Set sensitivity to `high`.
+- Lower continuous run threshold.
+- Lower no-idle threshold.
+
+## Development notes
+
+The integration keeps internal rolling samples using Home Assistant storage. Storage version remains `1` for compatibility with earlier releases.

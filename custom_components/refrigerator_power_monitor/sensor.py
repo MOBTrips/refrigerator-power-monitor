@@ -27,11 +27,16 @@ SENSOR_DESCRIPTIONS = (
     ("suggested_compressor_min", "suggested_compressor_min", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
     ("suggested_defrost_min", "suggested_defrost_min", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
     ("suggested_average_power_minimum", "suggested_average_power_minimum", SensorDeviceClass.POWER, UnitOfPower.WATT, SensorStateClass.MEASUREMENT),
+    ("suggested_high_duty_cycle_threshold", "suggested_high_duty_cycle_threshold", None, PERCENTAGE, SensorStateClass.MEASUREMENT),
+    ("suggested_power_ratio_threshold", "suggested_power_ratio_threshold", None, None, SensorStateClass.MEASUREMENT),
+    ("suggested_duty_cycle_ratio_threshold", "suggested_duty_cycle_ratio_threshold", None, None, SensorStateClass.MEASUREMENT),
+    ("suggested_continuous_run", "suggested_continuous_run", SensorDeviceClass.DURATION, UnitOfTime.MINUTES, SensorStateClass.MEASUREMENT),
     ("monitor_status", "monitor_status", None, None, None),
     ("last_event_type", "last_event_type", None, None, None),
     ("cooling_trend", "cooling_trend", None, None, None),
     ("alert_level", "alert_level", None, None, None),
     ("alert_reason", "alert_reason", None, None, None),
+    ("auto_tune_status", "auto_tune_status", None, None, None),
 )
 
 
@@ -72,9 +77,14 @@ class RefrigeratorSensor(RefrigeratorPowerMonitorEntity, SensorEntity):
             "suggested_compressor_min": metrics.suggested_compressor_min_w,
             "suggested_defrost_min": metrics.suggested_defrost_min_w,
             "suggested_average_power_minimum": metrics.suggested_average_power_minimum_w,
+            "suggested_high_duty_cycle_threshold": metrics.suggested_high_duty_cycle_threshold,
+            "suggested_power_ratio_threshold": metrics.suggested_power_ratio_threshold,
+            "suggested_duty_cycle_ratio_threshold": metrics.suggested_duty_cycle_ratio_threshold,
+            "suggested_continuous_run": metrics.suggested_continuous_run_minutes,
             "monitor_status": metrics.status,
             "last_event_type": metrics.last_event_type,
             "cooling_trend": metrics.cooling_trend,
             "alert_level": metrics.alert_level,
             "alert_reason": metrics.alert_reason,
+            "auto_tune_status": metrics.auto_tune_status,
         }[self._key]

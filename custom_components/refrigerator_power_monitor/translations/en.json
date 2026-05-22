@@ -24,7 +24,7 @@
     "step": {
       "init": {
         "title": "Refrigerator Power Monitor options",
-        "description": "Tune anomaly detection thresholds, event classification, and rolling history windows.",
+        "description": "Tune anomaly detection, auto-tune behavior, sensitivity, event classification, and rolling history windows.",
         "data": {
           "compressor_min_w": "Compressor minimum watts",
           "defrost_max_w": "High-power / defrost threshold watts",
@@ -43,7 +43,9 @@
           "idle_recent_hours": "Idle recovery lookback window",
           "no_idle_minutes": "No-idle recovery threshold",
           "trend_threshold_percent": "Cooling trend threshold",
-          "sample_interval_seconds": "Sample interval"
+          "sample_interval_seconds": "Sample interval",
+          "auto_tune_mode": "Auto-tune mode",
+          "sensitivity": "Sensitivity"
         },
         "data_description": {
           "defrost_min_duration_minutes": "High-power events shorter than this are treated as short spikes, not defrost.",
@@ -51,44 +53,121 @@
           "short_spike_max_duration_minutes": "Short high-power events may be ice maker, valve, accessory, or sensor noise.",
           "idle_recent_hours": "How far back to calculate idle recovery time.",
           "no_idle_minutes": "If the compressor is running and the refrigerator has not returned to idle this long, raise a stronger alert.",
-          "trend_threshold_percent": "Percent change needed to call recent cooling load increasing or decreasing."
+          "trend_threshold_percent": "Percent change needed to call recent cooling load increasing or decreasing.",
+          "auto_tune_mode": "Off disables suggestions, Suggest only exposes recommended thresholds, Auto apply periodically applies safe suggested thresholds after learning.",
+          "sensitivity": "Low is less sensitive, Normal balances false positives, High alerts sooner."
         }
       }
     }
   },
   "entity": {
     "sensor": {
-      "current_power": {"name": "Current power"},
-      "power_recent_average": {"name": "Recent average power"},
-      "power_baseline_average": {"name": "Baseline average power"},
-      "power_ratio": {"name": "Power ratio"},
-      "duty_cycle_recent": {"name": "Recent duty cycle"},
-      "duty_cycle_baseline": {"name": "Baseline duty cycle"},
-      "idle_time_recent": {"name": "Idle time recent"},
-      "time_since_idle": {"name": "Time since idle"},
-      "continuous_run": {"name": "Continuous run"},
-      "defrost_count_24h": {"name": "Defrost count 24h"},
-      "short_spike_count_24h": {"name": "Short spike count 24h"},
-      "last_defrost_duration": {"name": "Last defrost duration"},
-      "anomaly_confidence": {"name": "Anomaly confidence"},
-      "suggested_compressor_min": {"name": "Suggested compressor minimum"},
-      "suggested_defrost_min": {"name": "Suggested defrost threshold"},
-      "suggested_average_power_minimum": {"name": "Suggested average power minimum"},
-      "monitor_status": {"name": "Monitor status"},
-      "last_event_type": {"name": "Last event type"},
-      "cooling_trend": {"name": "Cooling trend"},
-      "alert_level": {"name": "Alert level"},
-      "alert_reason": {"name": "Alert reason"}
+      "current_power": {
+        "name": "Current power"
+      },
+      "power_recent_average": {
+        "name": "Recent average power"
+      },
+      "power_baseline_average": {
+        "name": "Baseline average power"
+      },
+      "power_ratio": {
+        "name": "Power ratio"
+      },
+      "duty_cycle_recent": {
+        "name": "Recent duty cycle"
+      },
+      "duty_cycle_baseline": {
+        "name": "Baseline duty cycle"
+      },
+      "idle_time_recent": {
+        "name": "Idle time recent"
+      },
+      "time_since_idle": {
+        "name": "Time since idle"
+      },
+      "continuous_run": {
+        "name": "Continuous run"
+      },
+      "defrost_count_24h": {
+        "name": "Defrost count 24h"
+      },
+      "short_spike_count_24h": {
+        "name": "Short spike count 24h"
+      },
+      "last_defrost_duration": {
+        "name": "Last defrost duration"
+      },
+      "anomaly_confidence": {
+        "name": "Anomaly confidence"
+      },
+      "suggested_compressor_min": {
+        "name": "Suggested compressor minimum"
+      },
+      "suggested_defrost_min": {
+        "name": "Suggested defrost threshold"
+      },
+      "suggested_average_power_minimum": {
+        "name": "Suggested average power minimum"
+      },
+      "monitor_status": {
+        "name": "Monitor status"
+      },
+      "last_event_type": {
+        "name": "Last event type"
+      },
+      "cooling_trend": {
+        "name": "Cooling trend"
+      },
+      "alert_level": {
+        "name": "Alert level"
+      },
+      "alert_reason": {
+        "name": "Alert reason"
+      },
+      "suggested_high_duty_cycle_threshold": {
+        "name": "Suggested high duty-cycle threshold"
+      },
+      "suggested_power_ratio_threshold": {
+        "name": "Suggested power ratio threshold"
+      },
+      "suggested_duty_cycle_ratio_threshold": {
+        "name": "Suggested duty-cycle ratio threshold"
+      },
+      "suggested_continuous_run": {
+        "name": "Suggested continuous run threshold"
+      },
+      "auto_tune_status": {
+        "name": "Auto-tune status"
+      }
     },
     "binary_sensor": {
-      "compressor_running": {"name": "Compressor running"},
-      "defrost_active": {"name": "Defrost active"},
-      "power_anomaly": {"name": "Power anomaly"},
-      "continuous_run_anomaly": {"name": "Continuous run anomaly"},
-      "no_idle_recovery_anomaly": {"name": "No idle recovery anomaly"}
+      "compressor_running": {
+        "name": "Compressor running"
+      },
+      "defrost_active": {
+        "name": "Defrost active"
+      },
+      "power_anomaly": {
+        "name": "Power anomaly"
+      },
+      "continuous_run_anomaly": {
+        "name": "Continuous run anomaly"
+      },
+      "no_idle_recovery_anomaly": {
+        "name": "No idle recovery anomaly"
+      }
     },
     "button": {
-      "reset_baseline": {"name": "Reset baseline"}
+      "reset_baseline": {
+        "name": "Reset baseline"
+      },
+      "analyze_baseline": {
+        "name": "Analyze baseline"
+      },
+      "apply_suggested_thresholds": {
+        "name": "Apply suggested thresholds"
+      }
     }
   }
 }

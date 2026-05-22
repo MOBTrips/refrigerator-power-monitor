@@ -1,12 +1,16 @@
 {
   "domain": "refrigerator_power_monitor",
   "name": "Refrigerator Power Monitor",
-  "after_dependencies": ["recorder"],
-  "codeowners": ["@MOBTrips"],
+  "after_dependencies": [
+    "recorder"
+  ],
+  "codeowners": [
+    "@MOBTrips"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/MOBTrips/refrigerator-power-monitor",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/MOBTrips/refrigerator-power-monitor/issues",
   "requirements": [],
-  "version": "0.2.1"
+  "version": "0.3.0"
 }

@@ -9,6 +9,10 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    AUTO_TUNE_AUTO_APPLY,
+    AUTO_TUNE_OFF,
+    AUTO_TUNE_SUGGEST_ONLY,
+    CONF_AUTO_TUNE_MODE,
     CONF_AVG_POWER_MIN_W,
     CONF_BASELINE_AVG_HOURS,
     CONF_COMPRESSOR_MIN_W,
@@ -25,9 +29,11 @@ from .const import (
     CONF_POWER_RATIO,
     CONF_POWER_SENSOR,
     CONF_SAMPLE_INTERVAL_SEC,
+    CONF_SENSITIVITY,
     CONF_SHORT_AVG_MIN,
     CONF_SHORT_SPIKE_MAX_DURATION_MIN,
     CONF_TREND_THRESHOLD_PERCENT,
+    DEFAULT_AUTO_TUNE_MODE,
     DEFAULT_AVG_POWER_MIN_W,
     DEFAULT_BASELINE_AVG_HOURS,
     DEFAULT_COMPRESSOR_MIN_W,
@@ -43,10 +49,14 @@ from .const import (
     DEFAULT_NO_IDLE_MINUTES,
     DEFAULT_POWER_RATIO,
     DEFAULT_SAMPLE_INTERVAL_SEC,
+    DEFAULT_SENSITIVITY,
     DEFAULT_SHORT_AVG_MIN,
     DEFAULT_SHORT_SPIKE_MAX_DURATION_MIN,
     DEFAULT_TREND_THRESHOLD_PERCENT,
     DOMAIN,
+    SENSITIVITY_HIGH,
+    SENSITIVITY_LOW,
+    SENSITIVITY_NORMAL,
 )
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
@@ -66,6 +76,18 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 OPTIONS_SCHEMA = vol.Schema(
     {
+        vol.Required(CONF_AUTO_TUNE_MODE, default=DEFAULT_AUTO_TUNE_MODE): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[AUTO_TUNE_OFF, AUTO_TUNE_SUGGEST_ONLY, AUTO_TUNE_AUTO_APPLY],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        ),
+        vol.Required(CONF_SENSITIVITY, default=DEFAULT_SENSITIVITY): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[SENSITIVITY_LOW, SENSITIVITY_NORMAL, SENSITIVITY_HIGH],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        ),
         vol.Required(CONF_COMPRESSOR_MIN_W, default=DEFAULT_COMPRESSOR_MIN_W): selector.NumberSelector(
             selector.NumberSelectorConfig(min=1, max=1000, step=1, unit_of_measurement="W")
         ),
@@ -138,6 +160,8 @@ class RefrigeratorPowerMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 title=user_input[CONF_NAME],
                 data=user_input,
                 options={
+                    CONF_AUTO_TUNE_MODE: DEFAULT_AUTO_TUNE_MODE,
+                    CONF_SENSITIVITY: DEFAULT_SENSITIVITY,
                     CONF_COMPRESSOR_MIN_W: user_input[CONF_COMPRESSOR_MIN_W],
                     CONF_DEFROST_MAX_W: user_input[CONF_DEFROST_MAX_W],
                     CONF_SHORT_AVG_MIN: DEFAULT_SHORT_AVG_MIN,
